@@ -1,0 +1,6 @@
+@AWS_POC_HostAddress = http://localhost:5080
+
+GET {{AWS_POC_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

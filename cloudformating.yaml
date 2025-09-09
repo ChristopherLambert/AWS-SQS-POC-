@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: SQS POC CHRIS (queue + DLQ + queue policy)
+
+Parameters:
+  EnvironmentPrefix:
+    Type: String
+    Default: poc-christopher
+  MessageRetentionSeconds:
+    Type: Number
+    Default: 345600 # 4 dias
+  VisibilityTimeout:
+    Type: Number
+    Default: 30
+  DelaySeconds:
+    Type: Number
+    Default: 0
+  MaxReceiveCount:
+    Type: Number
+    Default: 5
+  AllowedPrincipalArn:
+    Type: String
+    Description: ARN do principal (usuário/role) que poderá usar a fila
+    # Ex.: arn:aws:iam::602359230095:user/ChristopherLambert
+    Default: arn:aws:iam::602359230095:user/ChristopherLambert
+
+Resources:
+  PocDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${EnvironmentPrefix}sqs-dlq"
+
+  PocQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${EnvironmentPrefix}sqs"
+      DelaySeconds: !Ref DelaySeconds
+      VisibilityTimeout: !Ref VisibilityTimeout
+      MessageRetentionPeriod: !Ref MessageRetentionSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PocDlq.Arn
+        maxReceiveCount: !Ref MaxReceiveCount
+
+  # ----> Policy da fila principal (autoriza o principal indicado)
+  PocQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PocQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Pub + Consume básicos na fila principal
+          - Sid: AllowPrincipalUseMainQueue
+            Effect: Allow
+            Principal:
+              AWS: !Ref AllowedPrincipalArn
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:ChangeMessageVisibility
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt PocQueue.Arn
+
+  # (OPCIONAL) Policy para permitir ler/apagar da DLQ (útil para troubleshooting)
+  PocDlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PocDlq
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPrincipalUseDlq
+            Effect: Allow
+            Principal:
+              AWS: !Ref AllowedPrincipalArn
+            Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt PocDlq.Arn
+
+Outputs:
+  QueueUrl:
+    Value: !Ref PocQueue
+  DlqUrl:
+    Value: !Ref PocDlq
+  QueueArn:
+    Value: !GetAtt PocQueue.Arn
+  DlqArn:
+    Value: !GetAtt PocDlq.Arn

@@ -83,6 +83,130 @@ Resources:
               - sqs:GetQueueUrl
             Resource: !GetAtt PocDlq.Arn
 
+  # -------------------- DynamoDB --------------------
+  PocTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${EnvironmentPrefix}sqs-messages"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: MessageId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: MessageId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  # -------------------- Lambda Role --------------------
+  PocLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${EnvironmentPrefix}sqs-to-ddb-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole # logs em CloudWatch
+      Policies:
+        - PolicyName: AllowDdbPut
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt PocTable.Arn
+        - PolicyName: AllowSqsConsume
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:ChangeMessageVisibility
+                Resource: !GetAtt PocQueue.Arn
+
+  # -------------------- Lambda Function / NODE.JS --------------------
+  PocSqsToDdbFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}sqs-to-ddb"
+      Runtime: nodejs20.x
+      Handler: index.handler
+      MemorySize: 256
+      Timeout: 30
+      Role: !GetAtt PocLambdaRole.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PocTable
+      Code:
+       ZipFile: |
+          const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+          const client = new DynamoDBClient();
+
+          exports.handler = async (event) => {
+            const table = process.env.TABLE_NAME;
+
+            const puts = event.Records.map(async (rec) => {
+              const body = rec.body ?? "";
+              const sentTs = rec.attributes && rec.attributes.SentTimestamp
+                ? new Date(Number(rec.attributes.SentTimestamp)).toISOString()
+                : new Date().toISOString();
+
+              // Converte MessageAttributes da SQS para AttributeValue do DynamoDB
+              const attrs = rec.messageAttributes || {};
+              const attrMap = {};
+              for (const [key, val] of Object.entries(attrs)) {
+                if (val.stringValue != null) {
+                  attrMap[key] = { S: String(val.stringValue) };
+                } else if (val.binaryValue != null) {
+                  // binaryValue vem base64 da SQS; armazena como B no DDB
+                  attrMap[key] = { B: Buffer.from(val.binaryValue, "base64") };
+                } else if (Array.isArray(val.stringListValues) && val.stringListValues.length) {
+                  attrMap[key] = { L: val.stringListValues.map(s => ({ S: s })) };
+                }
+              }
+
+              const item = {
+                MessageId:          { S: rec.messageId },
+                Body:               { S: body },
+                Attributes:         { M: attrMap },
+                SentTimestamp:      { S: sentTs },
+                ApproxReceiveCount: { N: String(rec.attributes?.ApproximateReceiveCount ?? "1") },
+                ReceivedAt:         { S: new Date().toISOString() }
+              };
+
+              await client.send(new PutItemCommand({
+                TableName: table,
+                Item: item
+              }));
+            });
+
+            await Promise.all(puts);
+            return { statusCode: 200 };
+          };
+
+  # -------------------- Event Source Mapping (SQS -> Lambda) --------------------
+  PocQueueToLambdaMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn:
+      - PocSqsToDdbFunction
+      - PocQueue
+    Properties:
+      EventSourceArn: !GetAtt PocQueue.Arn
+      FunctionName: !Ref PocSqsToDdbFunction
+      Enabled: true
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      # opcional: VisibilityTimeout da fila já cobre; pode-se usar MaximumRetryAttempts etc.
+
 Outputs:
   QueueUrl:
     Value: !Ref PocQueue
@@ -92,3 +216,7 @@ Outputs:
     Value: !GetAtt PocQueue.Arn
   DlqArn:
     Value: !GetAtt PocDlq.Arn
+  TableName:
+    Value: !Ref PocTable
+  LambdaName:
+    Value: !Ref PocSqsToDdbFunction

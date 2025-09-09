@@ -137,7 +137,7 @@ Resources:
   PocSqsToDdbFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub "${EnvironmentPrefix}sqs-to-ddb"
+      FunctionName: !Sub "${EnvironmentPrefix}-sqs-to-ddb"
       Runtime: nodejs20.x
       Handler: index.handler
       MemorySize: 256

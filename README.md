@@ -1,0 +1,2 @@
+# AWS-SQS-POC-
+AWS SQS POC 

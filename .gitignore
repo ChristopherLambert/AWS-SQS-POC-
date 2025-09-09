@@ -1,0 +1,78 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- .NET build/artifacts ---
+bin/
+obj/
+[Bb]uild/
+[Ll]ogs/
+[Bb]enchmarkDotNet.Artifacts/
+TestResults/
+*.trx
+*.coverage*
+*.cov
+*.coveragexml
+
+# --- NuGet ---
+*.nupkg
+*.snupkg
+packages/
+*.nuget.props
+*.nuget.targets
+
+# --- Publish/Deploy ---
+publish/
+out/
+artifacts/
+
+# --- User/IDE files ---
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# VS Code (keep workspace settings if you like)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# --- Configs locais/secrets (não vazar) ---
+*.secret.json
+*.secrets.json
+*.local.json
+*.Development.json
+.env
+.env.*
+
+# --- Logs/temp ---
+*.log
+*.tlog
+*.pid
+tmp/
+temp/
+
+# --- Coverage/tools ---
+coverage/
+.coverage/
+.opencover.xml
+coverage.opencover.xml
+lcov.info
+
+# --- Docker ---
+docker-compose.override.yml
+**/.docker/
+**/*.tar
+
+# --- Misc ---
+*.swp
+*.orig

@@ -7,7 +7,7 @@ const status = ref("Conectando...");
 
 onMounted(async () => {
   const connection = new HubConnectionBuilder()
-    .withUrl("http://localhost:7232//hubs/test") // URL do seu backend .NET
+    .withUrl("https://localhost:7232//hubs/test") // URL do seu backend .NET
     .withAutomaticReconnect()
     .build();
 

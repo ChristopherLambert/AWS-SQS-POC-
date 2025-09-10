@@ -22,6 +22,16 @@ Parameters:
     Description: ARN do principal (usuário/role) que poderá usar a fila
     # Ex.: arn:aws:iam::602359230095:user/ChristopherLambert
     Default: arn:aws:iam::602359230095:user/ChristopherLambert
+  # --------------------- Parametros POSTGREEDB --------------------------------------
+  AllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: "CIDR permitido na porta 5432 (exemplo: SEU_IP/32)"
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro        # comum em todas regiões
+    AllowedPattern: "db\\..+"
+    Description: Classe da instância
 
 Resources:
   PocDlq:
@@ -97,6 +107,44 @@ Resources:
           KeyType: HASH
       SSESpecification:
         SSEEnabled: true
+
+  # -------------------- RDS Postgree --------------------
+  PostgresSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Acesso ao Postgres (POC)"
+      VpcId: vpc-f671b78c
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref AllowedCidr
+
+  PostgresInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete            # POC: apaga sem snapshot
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: !Sub "${EnvironmentPrefix}-pg-poc"
+      Engine: postgres
+      EngineVersion: "16"
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: 20
+      StorageType: gp3
+      PubliclyAccessible: true        # POC: acesso direto do notebook
+      MultiAZ: false
+      Port: 5432
+      DBName: appdb
+      MasterUsername: Christopher
+      MasterUserPassword: Sunrise2512
+      BackupRetentionPeriod: 0        # sem backup (POC)
+      VPCSecurityGroups:
+        - !GetAtt PostgresSG.GroupId
+      # O RDS não aceita DB Subnet Group com só uma subnet. Ele exige mínimo 2 subnets em AZs diferentes da mesma VPC.
+      # DB Subnet Gruop deve ser RDS e não DAX(DynamoDB) 
+      # Qualquer um dos dois erros acima vai dizer que não encontrou 
+      DBSubnetGroupName: rdssubnetvirginia 
+      StorageEncrypted: false         # POC: simplificado (ligue em prod)
 
   # -------------------- Lambda Role --------------------
   PocLambdaRole:
@@ -208,6 +256,18 @@ Resources:
       # opcional: VisibilityTimeout da fila já cobre; pode-se usar MaximumRetryAttempts etc.
 
 Outputs:
+  DbEndpoint:
+    Description: Endpoint do RDS
+    Value: !GetAtt PostgresInstance.Endpoint.Address
+  DbPort:
+    Description: Porta
+    Value: !GetAtt PostgresInstance.Endpoint.Port
+  DbName:
+    Description: Nome do DB inicial
+    Value: appdb
+  ConnString:
+    Description: String de conexão (psql)
+    Value: !Sub "psql -h ${PostgresInstance.Endpoint.Address} -p 5432 -U Christopher -d appdb"
   QueueUrl:
     Value: !Ref PocQueue
   DlqUrl:

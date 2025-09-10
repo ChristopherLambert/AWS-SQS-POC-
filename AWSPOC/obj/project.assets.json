@@ -538,11 +538,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Chris\\Projetos\\AWS-SQS-POC-\\AWSPOC\\AWSPOC.csproj",
+      "projectUniqueName": "D:\\Chris\\Projetos\\PocRealTime\\AWSPOC\\AWSPOC.csproj",
       "projectName": "AWSPOC",
-      "projectPath": "D:\\Chris\\Projetos\\AWS-SQS-POC-\\AWSPOC\\AWSPOC.csproj",
+      "projectPath": "D:\\Chris\\Projetos\\PocRealTime\\AWSPOC\\AWSPOC.csproj",
       "packagesPath": "C:\\Users\\chris\\.nuget\\packages\\",
-      "outputPath": "D:\\Chris\\Projetos\\AWS-SQS-POC-\\AWSPOC\\obj\\",
+      "outputPath": "D:\\Chris\\Projetos\\PocRealTime\\AWSPOC\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

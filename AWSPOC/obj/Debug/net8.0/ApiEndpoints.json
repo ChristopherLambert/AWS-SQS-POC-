@@ -14,5 +14,21 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SignalRController",
+    "Method": "Publish",
+    "RelativePath": "SignalR/publish",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "HubMessage",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   }
 ]

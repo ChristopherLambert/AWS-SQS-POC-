@@ -20,8 +20,17 @@ builder.Services.AddSingleton<IAmazonSQS>(sp =>
 
 builder.Services.AddSignalR();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("vue",
+        p => p.WithOrigins("http://localhost:5173")   // porta padrão do Vite
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());                   // necessário p/ SignalR cross-origin
+});
+
+
 var app = builder.Build();
-app.MapHub<HubSignalR>("/hubs/test");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -36,4 +45,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.UseCors("vue");
+app.MapHub<HubSignalR>("/hubs/test");
 app.Run();

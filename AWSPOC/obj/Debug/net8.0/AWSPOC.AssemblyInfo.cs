@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AWSPOC")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+edb6d647e4fa05a96fa0ea1974809e00fc9e6330")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+88dd190367542c4c5cb79fa719547ef4633bd92e")]
 [assembly: System.Reflection.AssemblyProductAttribute("AWSPOC")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AWSPOC")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

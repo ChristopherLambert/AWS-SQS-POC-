@@ -18,8 +18,10 @@ builder.Services.AddSingleton<IAmazonSQS>(sp =>
     return new AmazonSQSClient(RegionEndpoint.GetBySystemName(region));
 });
 
+builder.Services.AddSignalR();
 
 var app = builder.Build();
+app.MapHub<HubSignalR>("/hubs/test");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -27,7 +29,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 
 app.UseHttpsRedirection();
 

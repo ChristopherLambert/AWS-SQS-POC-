@@ -147,8 +147,8 @@ Resources:
         Variables:
           TABLE_NAME: !Ref PocTable
       Code:
-        S3Bucket: !Ref ArtifactBucket        # defina esse bucket em outro recurso/param
-        S3Key: "pocsqsddb/function.zip"
+        S3Bucket: lambdasnet
+        S3Key: pocsqsddb/function.zip
 
   # -------------------- Event Source Mapping (SQS -> Lambda) --------------------
   PocQueueToLambdaMapping:

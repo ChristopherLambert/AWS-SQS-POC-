@@ -141,7 +141,7 @@ Resources:
       Runtime: dotnet8
       Handler: "AWSLambdaPOC::AWSLambdaPOC.Function::FunctionHandler"
       MemorySize: 256
-      Timeout: 30
+      Timeout: 20
       Role: !GetAtt PocLambdaRole.Arn
       Environment:
         Variables:

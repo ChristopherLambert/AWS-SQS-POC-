@@ -1,0 +1,179 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: SQS POC CHRIS (queue + DLQ + queue policy)
+
+Parameters:
+  EnvironmentPrefix:
+    Type: String
+    Default: poc-christopher
+  MessageRetentionSeconds:
+    Type: Number
+    Default: 345600 # 4 dias
+  VisibilityTimeout:
+    Type: Number
+    Default: 30
+  DelaySeconds:
+    Type: Number
+    Default: 0
+  MaxReceiveCount:
+    Type: Number
+    Default: 5
+  AllowedPrincipalArn:
+    Type: String
+    Description: ARN do principal (usuário/role) que poderá usar a fila
+    # Ex.: arn:aws:iam::602359230095:user/ChristopherLambert
+    Default: arn:aws:iam::602359230095:user/ChristopherLambert
+
+Resources:
+  PocDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${EnvironmentPrefix}sqs-dlq"
+
+  PocQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${EnvironmentPrefix}sqs"
+      DelaySeconds: !Ref DelaySeconds
+      VisibilityTimeout: !Ref VisibilityTimeout
+      MessageRetentionPeriod: !Ref MessageRetentionSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PocDlq.Arn
+        maxReceiveCount: !Ref MaxReceiveCount
+
+  # ----> Policy da fila principal (autoriza o principal indicado)
+  PocQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PocQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Pub + Consume básicos na fila principal
+          - Sid: AllowPrincipalUseMainQueue
+            Effect: Allow
+            Principal:
+              AWS: !Ref AllowedPrincipalArn
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:ChangeMessageVisibility
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt PocQueue.Arn
+
+  # (OPCIONAL) Policy para permitir ler/apagar da DLQ (útil para troubleshooting)
+  PocDlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PocDlq
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPrincipalUseDlq
+            Effect: Allow
+            Principal:
+              AWS: !Ref AllowedPrincipalArn
+            Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt PocDlq.Arn
+
+  # -------------------- DynamoDB --------------------
+  PocTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${EnvironmentPrefix}sqs-messages"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: MessageId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: MessageId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  # -------------------- Lambda Role --------------------
+  PocLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${EnvironmentPrefix}sqs-to-ddb-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole # logs em CloudWatch
+      Policies:
+        - PolicyName: AllowDdbPut
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt PocTable.Arn
+        - PolicyName: AllowSqsConsume
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:ChangeMessageVisibility
+                Resource: !GetAtt PocQueue.Arn
+
+  # -------------------- Lambda Function / NODE.JS --------------------
+  PocSqsToDdbFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-sqs-to-ddb"
+      Runtime: nodejs20.x
+      Handler: "PocSqsToDdb::PocSqsToDdb.Function::Handler"
+      MemorySize: 256
+      Timeout: 30
+      Role: !GetAtt PocLambdaRole.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PocTable
+      Code:
+        S3Bucket: !Ref ArtifactBucket        # defina esse bucket em outro recurso/param
+        S3Key: "pocsqsddb/function.zip"
+
+  # -------------------- Event Source Mapping (SQS -> Lambda) --------------------
+  PocQueueToLambdaMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn:
+      - PocSqsToDdbFunction
+      - PocQueue
+    Properties:
+      EventSourceArn: !GetAtt PocQueue.Arn
+      FunctionName: !Ref PocSqsToDdbFunction
+      Enabled: true
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+      # opcional: VisibilityTimeout da fila já cobre; pode-se usar MaximumRetryAttempts etc.
+
+Outputs:
+  QueueUrl:
+    Value: !Ref PocQueue
+  DlqUrl:
+    Value: !Ref PocDlq
+  QueueArn:
+    Value: !GetAtt PocQueue.Arn
+  DlqArn:
+    Value: !GetAtt PocDlq.Arn
+  TableName:
+    Value: !Ref PocTable
+  LambdaName:
+    Value: !Ref PocSqsToDdbFunction

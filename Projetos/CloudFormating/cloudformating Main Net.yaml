@@ -133,7 +133,7 @@ Resources:
                   - sqs:ChangeMessageVisibility
                 Resource: !GetAtt PocQueue.Arn
 
-  # -------------------- Lambda Function / NODE.JS --------------------
+  # -------------------- Lambda Function / .NET --------------------
   PocSqsToDdbFunction:
     Type: AWS::Lambda::Function
     Properties:

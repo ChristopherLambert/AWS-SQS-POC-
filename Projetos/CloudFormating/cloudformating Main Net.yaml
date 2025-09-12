@@ -148,7 +148,7 @@ Resources:
           TABLE_NAME: !Ref PocTable
       Code:
         S3Bucket: lambdasnet
-        S3Key: pocsqsddb/function.zip
+        S3Key: pocsqsddb/functionw.zip
 
   # -------------------- Event Source Mapping (SQS -> Lambda) --------------------
   PocQueueToLambdaMapping:

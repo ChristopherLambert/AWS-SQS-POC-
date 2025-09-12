@@ -11,9 +11,10 @@ namespace AWSLambdaPOC;
 public class Function
 {
     private static readonly AmazonDynamoDBClient _ddb = new AmazonDynamoDBClient();
-    private static readonly string _table = Environment.GetEnvironmentVariable("TABLE_NAME");
+    // private static readonly string _table = Environment.GetEnvironmentVariable("TABLE_NAME");
+    private static readonly string _table = "poc-christophersqs-messages";
 
-    public async Task Handler(SQSEvent evnt, ILambdaContext context)
+    public async Task FunctionHandler(SQSEvent evnt, ILambdaContext context)
     {
         var tasks = new List<Task>();
         foreach (var rec in evnt.Records)

@@ -10,7 +10,7 @@ Parameters:
     Default: 345600 # 4 dias
   VisibilityTimeout:
     Type: Number
-    Default: 30
+    Default: 20
   DelaySeconds:
     Type: Number
     Default: 0

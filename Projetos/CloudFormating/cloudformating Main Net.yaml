@@ -138,7 +138,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${EnvironmentPrefix}-sqs-to-ddb"
-      Runtime: nodejs20.x
+      Runtime: dotnet8
       Handler: "AWSLambdaPOC::AWSLambdaPOC.Function::FunctionHandler"
       MemorySize: 256
       Timeout: 30

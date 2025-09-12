@@ -139,7 +139,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${EnvironmentPrefix}-sqs-to-ddb"
       Runtime: nodejs20.x
-      Handler: "PocSqsToDdb::PocSqsToDdb.Function::Handler"
+      Handler: "AWSLambdaPOC::AWSLambdaPOC.Function::FunctionHandler"
       MemorySize: 256
       Timeout: 30
       Role: !GetAtt PocLambdaRole.Arn
